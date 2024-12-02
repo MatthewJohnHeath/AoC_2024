@@ -1,7 +1,6 @@
 use std::fs::read_to_string;
 
 use std::collections::BTreeMap;
-use std::collections::HashSet;
 
 fn main() {
     day_one("input1.txt");
@@ -67,52 +66,45 @@ fn day_two(input: &str){
     .count();
     println!("day 2, part 1: {}", first_part);
 
-    fn safe(diffs:&[i32])->bool{
-        let non_decreasing = diffs.iter()
-            .zip(0..)
-            .filter(|(&diff,_)|diff >= 0)
-            .map(|(_,i)|i).collect::<Vec<usize>>();
+    fn raising_slowly_mostly( levels: &[i32])->bool{
+        if levels.len() < 3 {return true;}
+  
+        let mut removed = None;
+        for i in 1..levels.len(){
 
-        let non_increasing = diffs.iter()
-            .zip(0..)
-            .filter(|(&diff, _)|diff <= 0)
-            .map(|(_,i)|i).collect::<Vec<usize>>();
+            let current = levels[i];
+            let previous = if removed == Some(i-1){levels[i-2]} else {levels[i-1]};
+            let diff = current - previous;
+            
+            if diff > 0 && diff < 4 {
+                continue;
+            }
 
-        let big_jumps = diffs.iter()
-            .zip(0..)
-            .filter(|(&diff,_)|diff.abs() > 3)
-            .map(|(_,i)|i).collect::<Vec<usize>>();
-        
-        if big_jumps.len() > 1 {return false;}
-        if non_decreasing.len() > 1 && non_increasing.len() > 1 {return false;}
-        
-        let no_jump = big_jumps.is_empty();
-        let start_jump = big_jumps.len() == 1 && big_jumps[0] == 0 ;
-        let end_jump = big_jumps.len() == 1 && big_jumps[0] == diffs.len() - 1 ;
-        
-        if non_decreasing.len() == 0 && non_increasing.len() == 0 {
-            return no_jump || start_jump || end_jump ;
+            if removed.is_some() {return false;}
+            if i == levels.len() - 1 {return true};
+            let next = levels[i+1];
+
+            if diff < 1  {
+                if next > previous {removed = Some(i);}
+                else if i == 1 || current > levels[i-2] {removed = Some(i-1);}
+                else {return false;}
+            }
+            else{
+                if next < current || next - previous < 4 {removed = Some(i);}
+                else if i == 1 { removed = Some(i - 1);}
+                else {return false;}
+            }
         }
- 
-        let decreasing = non_decreasing.len() == 1 ;
-        let index = if decreasing {non_decreasing[0]} else {non_increasing[0]};
-        
-        if index == 0{
-            return no_jump || start_jump;
-        }
-        if index == diffs.len() -1{
-            return no_jump || end_jump
-        }
-        let new_diff = diffs[index] + diffs[index + 1];
-        let new_diff_good = if decreasing {new_diff <0 && new_diff > -4} else {new_diff>0 && new_diff < 4};
-        
-        if !new_diff_good {return false;}
-        if no_jump {return true;}
-        
-        let jump_index = big_jumps[0]; 
-        
+        true
     }
-    let second_part = diff_lines
+
+    fn safe(levels:&[i32])->bool{
+       let safe_up = raising_slowly_mostly(&levels);
+       let safe_down  = raising_slowly_mostly(&levels.iter().rev().map(|&x|x).collect::<Vec<i32>>()); 
+       safe_up || safe_down 
+    }
+
+    let second_part = reports
     .iter()
     .filter(|vec|safe(&vec))
     .count();
